@@ -147,10 +147,10 @@ private: // 静的メンバ変数
 	static VertexPosNormalUv vertices[vertexCount];
 	// 頂点インデックス配列
 	static unsigned short indices[indexCount];
-	// ビルボード行列
-	static XMMATRIX matBillborad;
-	// Y軸回りビルボード
-	static XMMATRIX matBillboradY;
+	//// ビルボード行列
+	//static XMMATRIX matBillborad;
+	//// Y軸回りビルボード
+	//static XMMATRIX matBillboradY;
 
 private:// 静的メンバ関数
 	/// <summary>
