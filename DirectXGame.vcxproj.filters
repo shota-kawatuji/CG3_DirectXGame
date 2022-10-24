@@ -16,6 +16,9 @@
     <Filter Include="シェーダー ファイル">
       <UniqueIdentifier>{7d0e7b81-4308-414a-ae59-352b3afeccd0}</UniqueIdentifier>
     </Filter>
+    <Filter Include="リソース ファイル\Resources">
+      <UniqueIdentifier>{a42e3d22-2071-481a-9f30-8e938da4a9f4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -90,7 +93,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Resources\texture.png">
-      <Filter>リソース ファイル</Filter>
+      <Filter>リソース ファイル\Resources</Filter>
     </Image>
   </ItemGroup>
 </Project>

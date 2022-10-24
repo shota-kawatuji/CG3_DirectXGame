@@ -12,8 +12,8 @@ GameScene::~GameScene()
 	delete spriteBG;
 	delete object3d;
 	// スプライトの解放
-	delete(sprite1);
-	delete(sprite2);
+	delete sprite1;
+	delete sprite2;
 }
 
 void GameScene::Initialize(DirectXCommon* dxCommon, Input* input)
@@ -69,10 +69,10 @@ void GameScene::Update()
 	// カメラ移動
 	if (input->PushKey(DIK_W) || input->PushKey(DIK_S) || input->PushKey(DIK_D) || input->PushKey(DIK_A))
 	{
-		if (input->PushKey(DIK_W)) { Object3d::CameraMoveVector({ 0.0f,+1.0f,0.0f }); }
-		else if (input->PushKey(DIK_S)) { Object3d::CameraMoveVector({ 0.0f,-1.0f,0.0f }); }
-		if (input->PushKey(DIK_D)) { Object3d::CameraMoveVector({ +1.0f,0.0f,0.0f }); }
-		else if (input->PushKey(DIK_A)) { Object3d::CameraMoveVector({ -1.0f,0.0f,0.0f }); }
+		if (input->PushKey(DIK_W)) { Object3d::CameraMoveEyeVector({ 0.0f,+1.0f,0.0f }); }
+		else if (input->PushKey(DIK_S)) { Object3d::CameraMoveEyeVector({ 0.0f,-1.0f,0.0f }); }
+		if (input->PushKey(DIK_D)) { Object3d::CameraMoveEyeVector({ +1.0f,0.0f,0.0f }); }
+		else if (input->PushKey(DIK_A)) { Object3d::CameraMoveEyeVector({ -1.0f,0.0f,0.0f }); }
 	}
 
 	object3d->Update();
@@ -117,10 +117,6 @@ void GameScene::Draw()
 
 	/// <summary>
 	/// ここに3Dオブジェクトの描画処理を追加できる
-	// 描画
-	sprite1->Draw();
-	sprite2->Draw();
-
 	/// </summary>
 
 	// 3Dオブジェクト描画後処理
@@ -134,6 +130,10 @@ void GameScene::Draw()
 	/// <summary>
 	/// ここに前景スプライトの描画処理を追加できる
 	/// </summary>
+	// 描画
+	//sprite1->Draw();
+	//sprite2->Draw();
+	
 
 	// デバッグテキストの描画
 	debugText.DrawAll(cmdList);
