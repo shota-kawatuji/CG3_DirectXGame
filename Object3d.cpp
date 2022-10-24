@@ -32,8 +32,8 @@ D3D12_VERTEX_BUFFER_VIEW Object3d::vbView{};
 D3D12_INDEX_BUFFER_VIEW Object3d::ibView{};
 Object3d::VertexPosNormalUv Object3d::vertices[vertexCount];
 unsigned short Object3d::indices[indexCount];
-//XMMATRIX Object3d::matBillborad = XMMatrixIdentity();
-//XMMATRIX Object3d::matBillboradY = XMMatrixIdentity();
+XMMATRIX Object3d::matBillborad = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboradY = XMMatrixIdentity();
 
 void Object3d::StaticInitialize(ID3D12Device* device, int window_width, int window_height)
 {
@@ -633,10 +633,31 @@ void Object3d::UpdateViewMatrix()
 	// カメラ回転行列
 	XMMATRIX matCameraRot;
 	// カメラ座標系→ワールド座標系の変換行列
+#pragma region 全方位ビルボード行列の計算
+	// ビルボード行列
 	matCameraRot.r[0] = cameraAxisX;
 	matCameraRot.r[1] = cameraAxisY;
 	matCameraRot.r[2] = cameraAxisZ;
 	matCameraRot.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
+#pragma region Y軸回りビルボード行列の計算
+	// カメラX軸、Y軸、Z軸
+	XMVECTOR ybillCameraAxisX, ybillCameraAxisY, ybillCameraAxisZ;
+
+	// X軸は共通
+	ybillCameraAxisX = cameraAxisX;
+	// Y軸はワールド座標系のY軸
+	ybillCameraAxisY = XMVector3Normalize(upVector);
+	// Z軸はX軸->Y軸の外積で求まる
+	ybillCameraAxisZ = XMVector3Cross(ybillCameraAxisX, ybillCameraAxisY);
+
+	// Y軸回りビルボード行列
+	matBillboradY.r[0] = ybillCameraAxisX;
+	matBillboradY.r[1] = ybillCameraAxisY;
+	matBillboradY.r[2] = ybillCameraAxisZ;
+	matBillboradY.r[3] = XMVectorSet(0, 0, 0, 1);
+#pragma endregion
+
 	// 転置により逆行列(逆回転)を計算
 	matView = XMMatrixTranspose(matCameraRot);
 	// 視点座標に-1掛けた座標
@@ -689,6 +710,9 @@ void Object3d::Update()
 
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
+
+	matWorld *= matBillboradY;
+
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
