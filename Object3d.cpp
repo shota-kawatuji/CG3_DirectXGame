@@ -569,7 +569,7 @@ void Object3d::CreateModel()
 	};
 
 	// メンバ変数にコピー
-	std::copy(std::begin(indicesSquare), std::end(indicesSquare), indices);
+	std::copy(std::begin(), std::end(), vertices);
 
 	UINT sizeVB = static_cast<UINT>(sizeof(vertices));
 
