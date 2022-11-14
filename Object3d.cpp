@@ -19,21 +19,18 @@ ComPtr<ID3D12RootSignature> Object3d::rootsignature;
 ComPtr<ID3D12PipelineState> Object3d::pipelinestate;
 ComPtr<ID3D12DescriptorHeap> Object3d::descHeap;
 ComPtr<ID3D12Resource> Object3d::vertBuff;
-ComPtr<ID3D12Resource> Object3d::indexBuff;
 ComPtr<ID3D12Resource> Object3d::texbuff;
 CD3DX12_CPU_DESCRIPTOR_HANDLE Object3d::cpuDescHandleSRV;
 CD3DX12_GPU_DESCRIPTOR_HANDLE Object3d::gpuDescHandleSRV;
 XMMATRIX Object3d::matView{};
 XMMATRIX Object3d::matProjection{};
-XMFLOAT3 Object3d::eye = { 0, 0, -50.0f };
+XMFLOAT3 Object3d::eye = { 0, 0, -5.0f };
 XMFLOAT3 Object3d::target = { 0, 0, 0 };
 XMFLOAT3 Object3d::up = { 0, 1, 0 };
 D3D12_VERTEX_BUFFER_VIEW Object3d::vbView{};
-D3D12_INDEX_BUFFER_VIEW Object3d::ibView{};
-Object3d::VertexPosNormalUv Object3d::vertices[vertexCount];
-unsigned short Object3d::indices[indexCount];
-XMMATRIX Object3d::matBillborad = XMMatrixIdentity();
-XMMATRIX Object3d::matBillboradY = XMMatrixIdentity();
+Object3d::VertexPos Object3d::vertices[vertexCount];
+XMMATRIX Object3d::matBillboard = XMMatrixIdentity();
+XMMATRIX Object3d::matBillboardY = XMMatrixIdentity();
 
 void Object3d::StaticInitialize(ID3D12Device* device, int window_width, int window_height)
 {
@@ -72,7 +69,7 @@ void Object3d::PreDraw(ID3D12GraphicsCommandList* cmdList)
 	// ルートシグネチャの設定
 	cmdList->SetGraphicsRootSignature(rootsignature.Get());
 	// プリミティブ形状を設定
-	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
 }
 
 void Object3d::PostDraw()
@@ -185,14 +182,14 @@ void Object3d::InitializeCamera(int window_width, int window_height)
 void Object3d::InitializeGraphicsPipeline()
 {
 	HRESULT result = S_FALSE;
-	ComPtr<ID3DBlob> vsBlob; // 頂点シェーダオブジェクト
-	ComPtr<ID3DBlob> gsBlob; // ジオメトリシェーダオブジェクト
+	ComPtr<ID3DBlob> vsBlob;	// 頂点シェーダオブジェクト
+	ComPtr<ID3DBlob> gsBlob;	//ジオメトリシェーダー
 	ComPtr<ID3DBlob> psBlob;	// ピクセルシェーダオブジェクト
 	ComPtr<ID3DBlob> errorBlob; // エラーオブジェクト
 
 	// 頂点シェーダの読み込みとコンパイル
 	result = D3DCompileFromFile(
-		L"Resources/Shaders/BasicVertexShader.hlsl",	// シェーダファイル名
+		L"Resources/shaders/BasicVertexShader.hlsl",	// シェーダファイル名
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE, // インクルード可能にする
 		"main", "vs_5_0",	// エントリーポイント名、シェーダーモデル指定
@@ -213,15 +210,16 @@ void Object3d::InitializeGraphicsPipeline()
 		exit(1);
 	}
 
-	// ピクセルシェーダの読み込みとコンパイル
+	//ジオメトリシェーダーの読み込みとコンパイル
 	result = D3DCompileFromFile(
-		L"Resources/Shaders/BasicPixelShader.hlsl",	// シェーダファイル名
+		L"Resources/shaders/BasicGeometryShader.hlsl",	// シェーダファイル名
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE, // インクルード可能にする
-		"main", "ps_5_0",	// エントリーポイント名、シェーダーモデル指定
+		"main", "gs_5_0",	// エントリーポイント名、シェーダーモデル指定
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, // デバッグ用設定
 		0,
-		&psBlob, &errorBlob);
+		&gsBlob, &errorBlob
+	);
 	if (FAILED(result)) {
 		// errorBlobからエラー内容をstring型にコピー
 		std::string errstr;
@@ -236,15 +234,15 @@ void Object3d::InitializeGraphicsPipeline()
 		exit(1);
 	}
 
-	// ジオメトリシェーダの読み込みとコンパイル
+	// ピクセルシェーダの読み込みとコンパイル
 	result = D3DCompileFromFile(
-		L"Resources/Shaders/BasicGeometryShader.hlsl",	// シェーダファイル名
+		L"Resources/shaders/BasicPixelShader.hlsl",	// シェーダファイル名
 		nullptr,
 		D3D_COMPILE_STANDARD_FILE_INCLUDE, // インクルード可能にする
-		"main", "gs_5_0",	// エントリーポイント名、シェーダーモデル指定
+		"main", "ps_5_0",	// エントリーポイント名、シェーダーモデル指定
 		D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION, // デバッグ用設定
 		0,
-		&gsBlob, &errorBlob);
+		&psBlob, &errorBlob);
 	if (FAILED(result)) {
 		// errorBlobからエラー内容をstring型にコピー
 		std::string errstr;
@@ -266,16 +264,6 @@ void Object3d::InitializeGraphicsPipeline()
 			D3D12_APPEND_ALIGNED_ELEMENT,
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 		},
-		{ // 法線ベクトル(1行で書いたほうが見やすい)
-			"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
-		},
-		{ // uv座標(1行で書いたほうが見やすい)
-			"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
-		},
 	};
 
 	// グラフィックスパイプラインの流れを設定
@@ -288,8 +276,6 @@ void Object3d::InitializeGraphicsPipeline()
 	gpipeline.SampleMask = D3D12_DEFAULT_SAMPLE_MASK; // 標準設定
 	// ラスタライザステート
 	gpipeline.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	//gpipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-	//gpipeline.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
 	// デプスステンシルステート
 	gpipeline.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
@@ -316,8 +302,8 @@ void Object3d::InitializeGraphicsPipeline()
 	gpipeline.InputLayout.NumElements = _countof(inputLayout);
 
 	// 図形の形状設定（三角形）
-	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-
+	/*gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;*/
+	gpipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
 	gpipeline.NumRenderTargets = 1;	// 描画対象は1つ
 	gpipeline.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM_SRGB; // 0～255指定のRGBA
 	gpipeline.SampleDesc.Count = 1; // 1ピクセルにつき1回サンプリング
@@ -429,147 +415,15 @@ void Object3d::CreateModel()
 {
 	HRESULT result = S_FALSE;
 
-	std::vector<VertexPosNormalUv> realVertices;
-
-	//#pragma region 1-3書き換え前
-	//	// 頂点座標の計算（重複あり）
-	//	{
-	//		realVertices.resize((division + 1) * 2);
-	//		int index = 0;
-	//		float zValue;
-	//
-	//		// 底面
-	//		zValue = prizmHeight / 2.0f;
-	//		for (int i = 0; i < division; i++)
-	//		{
-	//			XMFLOAT3 vertex;
-	//			vertex.x = radius * sinf(XM_2PI / division * i);
-	//			vertex.y = radius * cosf(XM_2PI / division * i);
-	//			vertex.z = zValue;
-	//			realVertices[index++].pos = vertex;
-	//		}
-	//		realVertices[index++].pos = XMFLOAT3(0, 0, zValue);	// 底面の中心点
-	//		// 天面
-	//		zValue = -prizmHeight / 2.0f;
-	//		for (int i = 0; i < division; i++)
-	//		{
-	//			XMFLOAT3 vertex;
-	//			vertex.x = radius * sinf(XM_2PI / division * i);
-	//			vertex.y = radius * cosf(XM_2PI / division * i);
-	//			vertex.z = zValue;
-	//			realVertices[index++].pos = vertex;
-	//		}
-	//		realVertices[index++].pos = XMFLOAT3(0, 0, zValue);	// 天面の中心点
-	//	}
-	//
-	//	// 頂点座標の計算（重複なし）
-	//	{
-	//		int index = 0;
-	//		// 底面
-	//		for (int i = 0; i < division; i++)
-	//		{
-	//			unsigned short index0 = i + 1;
-	//			unsigned short index1 = i;
-	//			unsigned short index2 = division;
-	//
-	//			vertices[index++] = realVertices[index0];
-	//			vertices[index++] = realVertices[index1];
-	//			vertices[index++] = realVertices[index2]; // 底面の中心点
-	//		}
-	//		// 底面の最後の三角形の1番目のインデックスを0に書き換え
-	//		vertices[index - 3] = realVertices[0];
-	//
-	//		int topStart = division + 1;
-	//		// 天面
-	//		for (int i = 0; i < division; i++)
-	//		{
-	//			unsigned short index0 = topStart + i;
-	//			unsigned short index1 = topStart + i + 1;
-	//			unsigned short index2 = topStart + division;
-	//
-	//			vertices[index++] = realVertices[index0];
-	//			vertices[index++] = realVertices[index1];
-	//			vertices[index++] = realVertices[index2]; // 天面の中心点
-	//		}
-	//		// 天面の最後の三角形の1番目のインデックスを0に書き換え
-	//		vertices[index - 2] = realVertices[topStart];
-	//
-	//		// 側面
-	//		for (int i = 0; i < division; i++)
-	//		{
-	//			unsigned short index0 = i + 1;
-	//			unsigned short index1 = topStart + i + 1;
-	//			unsigned short index2 = i;
-	//			unsigned short index3 = topStart + i;
-	//
-	//			if (i == division - 1)
-	//			{
-	//				index0 = 0;
-	//				index1 = topStart;
-	//			}
-	//
-	//			vertices[index++] = realVertices[index0];
-	//			vertices[index++] = realVertices[index1];
-	//			vertices[index++] = realVertices[index2];
-	//
-	//			vertices[index++] = realVertices[index2];
-	//			vertices[index++] = realVertices[index1];
-	//			vertices[index++] = realVertices[index3];
-	//		}
-	//	}
-	//
-	//	// 頂点インデックスの設定
-	//	{
-	//		for (int i = 0; i < _countof(indices); i++)
-	//		{
-	//			indices[i] = i;
-	//		}
-	//	}
-	//
-	//	// 法線方向の計算
-	//	for (int i = 0; i < _countof(indices) / 3; i++)
-	//	{// 三角形１つごとに計算していく
-	//		// 三角形のインデックスを取得
-	//		unsigned short index0 = indices[i * 3 + 0];
-	//		unsigned short index1 = indices[i * 3 + 1];
-	//		unsigned short index2 = indices[i * 3 + 2];
-	//		// 三角形を構成する頂点座標をベクトルに代入
-	//		XMVECTOR p0 = XMLoadFloat3(&vertices[index0].pos);
-	//		XMVECTOR p1 = XMLoadFloat3(&vertices[index1].pos);
-	//		XMVECTOR p2 = XMLoadFloat3(&vertices[index2].pos);
-	//		// p0→p1ベクトル、p0→p2ベクトルを計算
-	//		XMVECTOR v1 = XMVectorSubtract(p1, p0);
-	//		XMVECTOR v2 = XMVectorSubtract(p2, p0);
-	//		// 外積は両方から垂直なベクトル
-	//		XMVECTOR normal = XMVector3Cross(v1, v2);
-	//		// 正規化（長さを1にする)
-	//		normal = XMVector3Normalize(normal);
-	//		// 求めた法線を頂点データに代入
-	//		XMStoreFloat3(&vertices[index0].normal, normal);
-	//		XMStoreFloat3(&vertices[index1].normal, normal);
-	//		XMStoreFloat3(&vertices[index2].normal, normal);
-	//	}
-	//#pragma endregion
-
-	// 四角形の頂点データ
-	VertexPosNormalUv verticesSquare[] = {
-		{{-5.0f,-5.0f,0.0f}, {0,0,1}, {0,1}},// 左下
-		{{-5.0f,+5.0f,0.0f}, {0,0,1}, {0,0}},// 左上
-		{{+5.0f,-5.0f,0.0f}, {0,0,1}, {1,1}},// 右下
-		{{+5.0f,+5.0f,0.0f}, {0,0,1}, {1,0}},// 右上
+	//四角形の頂点データ
+	VertexPos verticesPoint[] = {
+		{{0.0f,0.0f,0.0f}},
 	};
+	//メンバ変数にコピー
+	std::copy(std::begin(verticesPoint), std::end(verticesPoint), vertices);
 
-	// メンバ変数にコピー
-	std::copy(std::begin(verticesSquare), std::end(verticesSquare), vertices);
+	//std::vector<VertexPosNormalUv> realVertices;
 
-	// 四角形のインデックスデータ
-	unsigned short indicesSquare[] = {
-		0,1,2,// 三角形1
-		2,1,3,// 三角形2
-	};
-
-	// メンバ変数にコピー
-	std::copy(std::begin(), std::end(), vertices);
 
 	UINT sizeVB = static_cast<UINT>(sizeof(vertices));
 
@@ -585,7 +439,7 @@ void Object3d::CreateModel()
 	assert(SUCCEEDED(result));
 
 	// 頂点バッファへのデータ転送
-	VertexPosNormalUv* vertMap = nullptr;
+	VertexPos* vertMap = nullptr;
 	result = vertBuff->Map(0, nullptr, (void**)&vertMap);
 	if (SUCCEEDED(result)) {
 		memcpy(vertMap, vertices, sizeof(vertices));
@@ -596,34 +450,6 @@ void Object3d::CreateModel()
 	vbView.BufferLocation = vertBuff->GetGPUVirtualAddress();
 	vbView.SizeInBytes = sizeof(vertices);
 	vbView.StrideInBytes = sizeof(vertices[0]);
-
-	UINT sizeIB = static_cast<UINT>(sizeof(indices));
-	// リソース設定
-	resourceDesc.Width = sizeIB;
-
-	// インデックスバッファ生成
-	result = device->CreateCommittedResource(
-		&heapProps, D3D12_HEAP_FLAG_NONE, &resourceDesc, D3D12_RESOURCE_STATE_GENERIC_READ, nullptr,
-		IID_PPV_ARGS(&indexBuff));
-
-	// インデックスバッファへのデータ転送
-	unsigned short* indexMap = nullptr;
-	result = indexBuff->Map(0, nullptr, (void**)&indexMap);
-	if (SUCCEEDED(result)) {
-
-		// 全インデックスに対して
-		for (int i = 0; i < _countof(indices); i++)
-		{
-			indexMap[i] = indices[i];	// インデックスをコピー
-		}
-
-		indexBuff->Unmap(0, nullptr);
-	}
-
-	// インデックスバッファビューの作成
-	ibView.BufferLocation = indexBuff->GetGPUVirtualAddress();
-	ibView.Format = DXGI_FORMAT_R16_UINT;
-	ibView.SizeInBytes = sizeof(indices);
 }
 
 void Object3d::UpdateViewMatrix()
@@ -658,12 +484,17 @@ void Object3d::UpdateViewMatrix()
 	// カメラ回転行列
 	XMMATRIX matCameraRot;
 	// カメラ座標系→ワールド座標系の変換行列
-#pragma region 全方位ビルボード行列の計算
-	// ビルボード行列
 	matCameraRot.r[0] = cameraAxisX;
 	matCameraRot.r[1] = cameraAxisY;
 	matCameraRot.r[2] = cameraAxisZ;
 	matCameraRot.r[3] = XMVectorSet(0, 0, 0, 1);
+
+#pragma region 全方位ビルボード行列の計算
+	//ビルボード行列
+	matBillboard.r[0] = cameraAxisX;
+	matBillboard.r[1] = cameraAxisY;
+	matBillboard.r[2] = cameraAxisZ;
+	matBillboard.r[3] = XMVectorSet(0, 0, 0, 1);
 #pragma endregion
 #pragma region Y軸回りビルボード行列の計算
 	// カメラX軸、Y軸、Z軸
@@ -676,11 +507,11 @@ void Object3d::UpdateViewMatrix()
 	// Z軸はX軸->Y軸の外積で求まる
 	ybillCameraAxisZ = XMVector3Cross(ybillCameraAxisX, ybillCameraAxisY);
 
-	// Y軸回りビルボード行列
-	matBillboradY.r[0] = ybillCameraAxisX;
-	matBillboradY.r[1] = ybillCameraAxisY;
-	matBillboradY.r[2] = ybillCameraAxisZ;
-	matBillboradY.r[3] = XMVectorSet(0, 0, 0, 1);
+	//Y軸回りのビルボード行列
+	matBillboardY.r[0] = ybillCameraAxisX;
+	matBillboardY.r[1] = ybillCameraAxisY;
+	matBillboardY.r[2] = ybillCameraAxisZ;
+	matBillboardY.r[3] = XMVectorSet(0, 0, 0, 1);
 #pragma endregion
 
 	// 転置により逆行列(逆回転)を計算
@@ -736,23 +567,22 @@ void Object3d::Update()
 	// ワールド行列の合成
 	matWorld = XMMatrixIdentity(); // 変形をリセット
 
-	matWorld *= matBillboradY;
+	matWorld *= matBillboardY;
 
 	matWorld *= matScale; // ワールド行列にスケーリングを反映
 	matWorld *= matRot; // ワールド行列に回転を反映
 	matWorld *= matTrans; // ワールド行列に平行移動を反映
 
-	// 親オブジェクトがあれば
-	if (parent != nullptr) {
-		// 親オブジェクトのワールド行列を掛ける
-		matWorld *= parent->matWorld;
-	}
+	//// 親オブジェクトがあれば
+	//if (parent != nullptr) {
+	//	// 親オブジェクトのワールド行列を掛ける
+	//	matWorld *= parent->matWorld;
+	//}
 
 	// 定数バッファへデータ転送
 	ConstBufferData* constMap = nullptr;
 	result = constBuff->Map(0, nullptr, (void**)&constMap);
-	constMap->color = color;
-	constMap->mat = matWorld * matView * matProjection;	// 行列の合成
+	constMap->mat = matView * matProjection; // 行列の合成
 	constBuff->Unmap(0, nullptr);
 }
 
@@ -764,8 +594,6 @@ void Object3d::Draw()
 
 	// 頂点バッファの設定
 	cmdList->IASetVertexBuffers(0, 1, &vbView);
-	// インデックスバッファの設定
-	cmdList->IASetIndexBuffer(&ibView);
 
 	// デスクリプタヒープの配列
 	ID3D12DescriptorHeap* ppHeaps[] = { descHeap.Get() };
@@ -776,5 +604,5 @@ void Object3d::Draw()
 	// シェーダリソースビューをセット
 	cmdList->SetGraphicsRootDescriptorTable(1, gpuDescHandleSRV);
 	// 描画コマンド
-	cmdList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+	cmdList->DrawInstanced(_countof(vertices), 1, 0, 0);
 }
