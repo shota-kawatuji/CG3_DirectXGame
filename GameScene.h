@@ -4,8 +4,8 @@
 #include <DirectXMath.h>
 #include "Input.h"
 #include "Sprite.h"
-#include "Object3d.h"
 #include "DebugText.h"
+#include "ParticleManager.h"
 
 /// <summary>
 /// ゲームシーン
@@ -60,10 +60,9 @@ private: // メンバ変数
 	/// ゲームシーン用
 	/// </summary>
 	Sprite* spriteBG = nullptr;
-	Object3d* object3d = nullptr;
+	ParticleManager* particleMan = nullptr;
 
 	Sprite* sprite1 = nullptr;
 	Sprite* sprite2 = nullptr;
 
 };
-
