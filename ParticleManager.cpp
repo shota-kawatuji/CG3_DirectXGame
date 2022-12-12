@@ -274,6 +274,11 @@ void ParticleManager::InitializeGraphicsPipeline()
 			D3D12_APPEND_ALIGNED_ELEMENT,
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
 		},
+		{ // スケール
+			"TEXCOORD", 0, DXGI_FORMAT_R32_FLOAT, 0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0
+		},
 	};
 
 	// グラフィックスパイプラインの流れを設定
@@ -616,6 +621,11 @@ void ParticleManager::Update()
 		it->velocity = it->velocity + it->accel;
 		// 速度による移動
 		it->position = it->position + it->velocity;
+		// 進行度を0～1の範囲に換算
+		float f = (float)it->frame / it->num_frame;
+		// スケールの線形補間
+		it->scale = (it->e_scale - it->s_scale) * f;
+		it->scale += it->s_scale;
 	}
 
 	// 頂点バッファへのデータ転送
@@ -630,6 +640,8 @@ void ParticleManager::Update()
 			vertMap->pos = it->position;
 			// 次の頂点へ
 			vertMap++;
+			// スケール
+			vertMap->scale = it->scale;
 		}
 		vertBuff->Unmap(0, nullptr);
 	}
@@ -665,7 +677,7 @@ void ParticleManager::Draw()
 		particels.end()), 1, 0, 0);
 }
 
-void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel)
+void ParticleManager::Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel, float start_scale, float end_scale)
 {
 	// リストに要素を追加
 	particels.emplace_front();

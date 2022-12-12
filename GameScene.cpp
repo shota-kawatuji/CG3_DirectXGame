@@ -95,7 +95,7 @@ void GameScene::Update()
 		const float md_acc = 0.001f;
 		acc.y = -(float)rand() / RAND_MAX * md_acc;
 		// 追加
-		particleMan->Add(60, pos, vel, acc);
+		particleMan->Add(60, pos, vel, acc, 1.0f, 0.0f);
 	}
 
 
@@ -155,7 +155,7 @@ void GameScene::Draw()
 	// 描画
 	//sprite1->Draw();
 	//sprite2->Draw();
-	
+
 
 	// デバッグテキストの描画
 	debugText.DrawAll(cmdList);

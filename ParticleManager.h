@@ -26,6 +26,7 @@ public: // サブクラス
 	struct VertexPos
 	{
 		XMFLOAT3 pos; // xyz座標
+		float scale; // スケール
 	};
 
 	// 定数バッファ用データ構造体
@@ -48,6 +49,12 @@ public: // サブクラス
 		int frame = 0;
 		// 終了フレーム
 		int num_frame = 0;
+		// スケール
+		float scale = 1.0f;
+		// 初期値
+		float s_scale = 1.0f;
+		// 最終値
+		float e_scale = 0.0f;
 	};
 
 private: // 定数
@@ -229,7 +236,7 @@ public: // アクセッサ
 	/// <param name="position">初期座標</param>
 	/// <param name="velocity">速度</param>
 	/// <param name="accel">加速度</param>
-	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel);
+	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel, float start_scale, float end_scale);
 
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ
