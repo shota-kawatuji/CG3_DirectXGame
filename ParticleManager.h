@@ -5,6 +5,7 @@
 #include <d3d12.h>
 #include <DirectXMath.h>
 #include <d3dx12.h>
+#include <forward_list>
 
 /// <summary>
 /// 3Dオブジェクト
@@ -34,12 +35,27 @@ public: // サブクラス
 		XMMATRIX matBillboard; // ビルボード行列
 	};
 
+	// パーティクル
+	struct Particle
+	{
+		// 座標
+		XMFLOAT3 position = {};
+		// 速度
+		XMFLOAT3 velocity = {};
+		// 加速度
+		XMFLOAT3 accel = {};
+		// 現在フレーム
+		int frame = 0;
+		// 終了フレーム
+		int num_frame = 0;
+	};
+
 private: // 定数
 	static const int division = 50;					// 分割数
 	static const float radius;				// 底面の半径
 	static const float prizmHeight;			// 柱の高さ
 	static const int planeCount = division * 2 + division * 2;		// 面の数
-	static const int vertexCount = 30;		// 頂点数
+	static const int vertexCount = 1024;	// 頂点数
 
 public: // 静的メンバ関数
 	/// <summary>
@@ -60,7 +76,7 @@ public: // 静的メンバ関数
 	/// 描画後処理
 	/// </summary>
 	static void PostDraw();
-	
+
 	/// <summary>
 	/// 3Dオブジェクト生成
 	/// </summary>
@@ -103,6 +119,39 @@ public: // 静的メンバ関数
 	/// <param name="move">移動量</param>
 	static void CameraMoveEyeVector(XMFLOAT3 move);
 
+	/// <summary>
+	/// デスクリプタヒープの初期化
+	/// </summary>
+	static void InitializeDescriptorHeap();
+
+	/// <summary>
+	/// カメラ初期化
+	/// </summary>
+	/// <param name="window_width">画面横幅</param>
+	/// <param name="window_height">画面縦幅</param>
+	static void InitializeCamera(int window_width, int window_height);
+
+	/// <summary>
+	/// グラフィックパイプライン生成
+	/// </summary>
+	/// <returns>成否</returns>
+	static void InitializeGraphicsPipeline();
+
+	/// <summary>
+	/// テクスチャ読み込み
+	/// </summary>
+	static void LoadTexture();
+
+	/// <summary>
+	/// モデル作成
+	/// </summary>
+	static void CreateModel();
+
+	/// <summary>
+	/// ビュー行列を更新
+	/// </summary>
+	static void UpdateViewMatrix();
+
 private: // 静的メンバ変数
 	// デバイス
 	static ID3D12Device* device;
@@ -143,39 +192,9 @@ private: // 静的メンバ変数
 	// Y軸回りビルボード
 	static XMMATRIX matBillboardY;
 
-private:// 静的メンバ関数
-	/// <summary>
-	/// デスクリプタヒープの初期化
-	/// </summary>
-	static void InitializeDescriptorHeap();
-
-	/// <summary>
-	/// カメラ初期化
-	/// </summary>
-	/// <param name="window_width">画面横幅</param>
-	/// <param name="window_height">画面縦幅</param>
-	static void InitializeCamera(int window_width, int window_height);
-
-	/// <summary>
-	/// グラフィックパイプライン生成
-	/// </summary>
-	/// <returns>成否</returns>
-	static void InitializeGraphicsPipeline();
-
-	/// <summary>
-	/// テクスチャ読み込み
-	/// </summary>
-	static void LoadTexture();
-
-	/// <summary>
-	/// モデル作成
-	/// </summary>
-	static void CreateModel();
-
-	/// <summary>
-	/// ビュー行列を更新
-	/// </summary>
-	static void UpdateViewMatrix();
+private:
+	// パーティクル配列
+	std::forward_list<Particle> particels;
 
 public: // メンバ関数
 	bool Initialize();
@@ -189,6 +208,8 @@ public: // メンバ関数
 	/// </summary>
 	void Draw();
 
+public: // アクセッサ
+
 	/// <summary>
 	/// 座標の取得
 	/// </summary>
@@ -200,6 +221,15 @@ public: // メンバ関数
 	/// </summary>
 	/// <param name="position">座標</param>
 	void SetPosition(const XMFLOAT3& position) { this->position = position; }
+
+	/// <summary>
+	/// パーティクルの追加
+	/// </summary>
+	/// <param name="life">生存時間</param>
+	/// <param name="position">初期座標</param>
+	/// <param name="velocity">速度</param>
+	/// <param name="accel">加速度</param>
+	void Add(int life, XMFLOAT3 position, XMFLOAT3 velocity, XMFLOAT3 accel);
 
 private: // メンバ変数
 	ComPtr<ID3D12Resource> constBuff; // 定数バッファ
